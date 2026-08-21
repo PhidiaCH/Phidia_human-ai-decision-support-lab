@@ -76,6 +76,11 @@
   .scale-labels{display:flex; justify-content:space-between; font-size:11px; color:var(--sub); margin-top:5px;}
   .qblock{margin-bottom:24px;}
   .qblock .q{font-size:14.5px; font-weight:500; margin-bottom:4px;}
+  .construct-label{font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:.12em; color:var(--amber); text-transform:uppercase; margin:26px 0 4px;}
+  .item-row{margin-bottom:14px; padding-top:10px; border-top:1px solid var(--line);}
+  .item-row:first-of-type{border-top:none; padding-top:0;}
+  .item-text{font-size:13.5px; color:var(--text); margin-bottom:7px; line-height:1.6;}
+  .scale.small button{padding:9px 4px; font-size:12.5px;}
 
   .choice-row{display:flex; gap:12px; margin-top:8px;}
   .choice-btn{flex:1; padding:16px; border-radius:8px; border:1px solid var(--line); background:var(--panel-2); cursor:pointer; text-align:center; transition:all .12s;}
@@ -254,28 +259,28 @@
     </div>
 
     <div class="qblock">
-      <div class="q">我對這個案件的問題與影響「理解」得很清楚</div>
-      <div class="scale" id="scale-understand"></div>
-      <div class="scale-labels"><span>非常不同意</span><span>非常同意</span></div>
-    </div>
-
-    <div class="qblock">
       <div class="q">我對這個決策結果的「信心程度」</div>
       <div class="scale" id="scale-confidence"></div>
       <div class="scale-labels"><span>非常低</span><span>非常高</span></div>
     </div>
 
-    <div class="qblock" id="trust-block">
-      <div class="q">我信任這份 AI 決策建議（能力／誠信／善意整體評估）</div>
-      <div class="scale" id="scale-trust"></div>
-      <div class="scale-labels"><span>非常不信任</span><span>非常信任</span></div>
+    <div class="construct-label">資訊理解</div>
+    <div id="scale-understand"></div>
+    <div class="scale-labels" style="margin-top:-6px; margin-bottom:14px;"><span>非常不同意</span><span>非常同意</span></div>
+
+    <div class="construct-label">感知決策品質</div>
+    <div id="scale-quality"></div>
+    <div class="scale-labels" style="margin-top:-6px; margin-bottom:14px;"><span>非常不同意</span><span>非常同意</span></div>
+
+    <div id="trust-block" class="hidden">
+      <div class="construct-label">AI信任（僅B組）</div>
+      <div id="scale-trust"></div>
+      <div class="scale-labels" style="margin-top:-6px; margin-bottom:14px;"><span>非常不同意</span><span>非常同意</span></div>
     </div>
 
-    <div class="qblock">
-      <div class="q">若未來遇到類似案件，我願意採用這種介面輔助決策</div>
-      <div class="scale" id="scale-adopt"></div>
-      <div class="scale-labels"><span>非常不願意</span><span>非常願意</span></div>
-    </div>
+    <div class="construct-label">決策採用意願</div>
+    <div id="scale-adopt"></div>
+    <div class="scale-labels" style="margin-top:-6px;"><span>非常不同意</span><span>非常同意</span></div>
 
     <div class="btn-row">
       <button class="btn" id="submit-btn" onclick="submitSession()" disabled>提交本次記錄</button>
@@ -325,11 +330,35 @@ let session = {
   t_decision_shown: null,
   t_submitted: null,
   decision: null,
-  understand: null,
   confidence: null,
-  trust: null,
-  adopt: null
+  items: { understand: [], quality: [], trust: [], adopt: [] }
 };
+
+const SCALES = {
+  understand: [
+    '我清楚知道這個案件目前面臨的問題是什麼',
+    '我理解這個決策可能帶來的影響',
+    '我對案件的關鍵資訊來源感到清楚'
+  ],
+  quality: [
+    '我認為這個決策的品質很高',
+    '我認為這個決策能有效控制風險',
+    '我認為投入的資源運用得當'
+  ],
+  trust: [
+    '我認為這個AI建議的判斷是準確的',
+    '我認為AI提供的證據來源可靠',
+    '我認為這個AI建議具備足夠的專業能力',
+    '我對採用這個AI建議感到安心'
+  ],
+  adopt: [
+    '我願意採用這個決策建議',
+    '未來遇到類似案件，我願意持續使用這樣的AI輔助',
+    '我願意向同事推薦使用這樣的系統'
+  ]
+};
+const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const allFilled = arr => arr.length>0 && arr.every(v=>v!==null);
 
 function tick(){
   document.getElementById('clock').textContent = new Date().toLocaleString('zh-TW', {hour12:false});
@@ -351,11 +380,40 @@ function buildScale(containerId, key, n=5){
     el.appendChild(b);
   }
 }
-buildScale('scale-understand','understand');
+function buildItemScale(containerId, items, key, n=5){
+  session.items[key] = new Array(items.length).fill(null);
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  items.forEach((text, idx) => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    const t = document.createElement('div');
+    t.className = 'item-text';
+    t.textContent = text;
+    row.appendChild(t);
+    const scale = document.createElement('div');
+    scale.className = 'scale small';
+    for(let i=1;i<=n;i++){
+      const b = document.createElement('button');
+      b.textContent = i;
+      b.onclick = () => {
+        session.items[key][idx] = i;
+        [...scale.children].forEach(c=>c.classList.remove('on'));
+        b.classList.add('on');
+        checkReady();
+      };
+      scale.appendChild(b);
+    }
+    row.appendChild(scale);
+    el.appendChild(row);
+  });
+}
 buildScale('scale-confidence','confidence');
-buildScale('scale-trust','trust');
-buildScale('scale-adopt','adopt');
 buildScale('scale-aiexp','aiExperience');
+buildItemScale('scale-understand', SCALES.understand, 'understand');
+buildItemScale('scale-quality', SCALES.quality, 'quality');
+buildItemScale('scale-trust', SCALES.trust, 'trust');
+buildItemScale('scale-adopt', SCALES.adopt, 'adopt');
 
 function setMfg(v){
   session.mfgInvolved = v;
@@ -421,12 +479,18 @@ function setChoice(v){
 
 function checkReady(){
   const needTrust = session.group === 'B';
-  const ready = session.decision && session.understand && session.confidence && session.adopt && (!needTrust || session.trust);
+  const ready = session.decision && session.confidence &&
+    allFilled(session.items.understand) && allFilled(session.items.quality) &&
+    allFilled(session.items.adopt) && (!needTrust || allFilled(session.items.trust));
   document.getElementById('submit-btn').disabled = !ready;
 }
 
 async function submitSession(){
   session.t_submitted = Date.now();
+  session.understandMean = mean(session.items.understand);
+  session.qualityMean = mean(session.items.quality);
+  session.adoptMean = mean(session.items.adopt);
+  session.trustMean = session.group==='B' ? mean(session.items.trust) : null;
   const statusEl = document.getElementById('submit-status');
   statusEl.textContent = '儲存中…';
   statusEl.className = 'status';
@@ -452,10 +516,11 @@ function showDebrief(){
     ['AI使用經驗(1-5)', session.aiExperience],
     ['組別', session.group],
     ['決策', session.decision === 'yes' ? '升級' : '不升級'],
-    ['理解程度', session.understand],
-    ['信心程度', session.confidence],
-    ['AI信任程度', session.group==='B' ? session.trust : 'N/A（A組無AI建議）'],
-    ['採用意願', session.adopt],
+    ['決策信心', session.confidence],
+    ['資訊理解（3題平均）', session.understandMean.toFixed(2)],
+    ['感知決策品質（3題平均）', session.qualityMean.toFixed(2)],
+    ['AI信任（4題平均）', session.group==='B' ? session.trustMean.toFixed(2) : 'N/A（A組無AI建議）'],
+    ['決策採用意願（3題平均）', session.adoptMean.toFixed(2)],
     ['閱讀情境耗時(秒)', ((session.t_decision_shown - session.t_scenario_shown)/1000).toFixed(1)],
     ['決策耗時(秒)', ((session.t_submitted - session.t_decision_shown)/1000).toFixed(1)],
     ['總耗時(秒)', ((session.t_submitted - session.t_start)/1000).toFixed(1)],
@@ -464,15 +529,25 @@ function showDebrief(){
 }
 
 function toCSVRow(s){
+  const u = s.items.understand, q = s.items.quality, t = s.items.trust, a = s.items.adopt;
   return [s.id,s.pid,s.industry,s.rank,s.mfgInvolved,s.scenarioType,s.aiExperience,
-    s.group,s.decision,s.understand,s.confidence,s.trust??'',s.adopt,
+    s.group,s.decision,s.confidence,
+    u[0],u[1],u[2],s.understandMean.toFixed(3),
+    q[0],q[1],q[2],s.qualityMean.toFixed(3),
+    t[0]??'',t[1]??'',t[2]??'',t[3]??'', s.trustMean!==null ? s.trustMean.toFixed(3) : '',
+    a[0],a[1],a[2],s.adoptMean.toFixed(3),
     ((s.t_decision_shown-s.t_scenario_shown)/1000).toFixed(1),
     ((s.t_submitted-s.t_decision_shown)/1000).toFixed(1),
     ((s.t_submitted-s.t_start)/1000).toFixed(1),
     new Date(s.t_start).toISOString()
   ].join(',');
 }
-const CSV_HEADER = 'session_id,pid,industry,rank,mfg_involved,scenario_type,ai_experience,group,decision,understand,confidence,trust,adopt,read_sec,decide_sec,total_sec,started_at';
+const CSV_HEADER = 'session_id,pid,industry,rank,mfg_involved,scenario_type,ai_experience,group,decision,confidence,'
+  + 'understand_1,understand_2,understand_3,understand_mean,'
+  + 'quality_1,quality_2,quality_3,quality_mean,'
+  + 'trust_1,trust_2,trust_3,trust_4,trust_mean,'
+  + 'adopt_1,adopt_2,adopt_3,adopt_mean,'
+  + 'read_sec,decide_sec,total_sec,started_at';
 
 function downloadCSV(){
   const csv = CSV_HEADER + '\n' + toCSVRow(session);
