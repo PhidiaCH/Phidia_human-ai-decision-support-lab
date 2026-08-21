@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>封裝製程風險升級決策實驗</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14161a;
+    --panel:#1c1f24;
+    --panel-2:#22262c;
+    --line:#33383f;
+    --text:#e8e6e1;
+    --sub:#9aa0a8;
+    --amber:#ffb81c;
+    --amber-dim:#5c4a1a;
+    --red:#e5484d;
+    --green:#30a46c;
+    --blue:#4d9de0;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--bg); color:var(--text); font-family:'Noto Sans TC', sans-serif; min-height:100vh;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  #app{max-width:920px; margin:0 auto; padding:28px 20px 80px; position:relative;}
+
+  /* header strip - fab badge motif */
+  .rail{position:fixed; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--amber),var(--amber-dim) 40%, transparent); z-index:50;}
+  header.top{display:flex; align-items:center; justify-content:space-between; padding:18px 0 22px; border-bottom:1px solid var(--line); margin-bottom:28px;}
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand .tag{font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:.14em; color:var(--amber); border:1px solid var(--amber-dim); padding:3px 7px; border-radius:3px; background:rgba(255,184,28,.06);}
+  .brand h1{font-size:16px; font-weight:700; letter-spacing:.02em;}
+  .clock{font-family:'IBM Plex Mono'; font-size:12px; color:var(--sub);}
+
+  .badge{display:inline-flex; align-items:center; gap:8px; font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:.1em; color:var(--sub); background:var(--panel-2); border:1px solid var(--line); padding:4px 10px; border-radius:20px;}
+  .badge b{color:var(--amber); font-weight:600;}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:26px; margin-bottom:20px;}
+  .eyebrow{font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:.16em; color:var(--amber); text-transform:uppercase; margin-bottom:10px;}
+  h2{font-size:22px; font-weight:900; margin-bottom:14px; line-height:1.4;}
+  p.lead{color:var(--sub); font-size:14.5px; line-height:1.9; margin-bottom:18px;}
+  .btn{appearance:none; border:none; cursor:pointer; font-family:'Noto Sans TC'; font-weight:700; font-size:14.5px; padding:12px 24px; border-radius:6px; background:var(--amber); color:#1a1300; transition:transform .12s, filter .12s;}
+  .btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+  .btn:disabled{opacity:.35; cursor:not-allowed; transform:none;}
+  .btn.ghost{background:transparent; color:var(--text); border:1px solid var(--line);}
+  .btn.ghost:hover{border-color:var(--amber);}
+  .btn-row{display:flex; gap:10px; margin-top:22px; flex-wrap:wrap;}
+
+  input[type=text]{width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:11px 12px; border-radius:6px; font-family:'IBM Plex Mono'; font-size:14px;}
+  input[type=text]:focus{outline:none; border-color:var(--amber);}
+  label.field{display:block; font-size:12.5px; color:var(--sub); margin-bottom:6px; letter-spacing:.03em;}
+
+  table.spec{width:100%; border-collapse:collapse; margin-top:6px;}
+  table.spec th{font-family:'IBM Plex Mono'; font-size:11px; letter-spacing:.08em; color:var(--sub); text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); text-transform:uppercase;}
+  table.spec td{font-size:13.5px; padding:11px 10px; border-bottom:1px solid var(--line); vertical-align:top; line-height:1.6;}
+  table.spec tr:last-child td{border-bottom:none;}
+
+  .ai-panel{margin-top:18px; border:1px solid var(--amber-dim); background:linear-gradient(180deg, rgba(255,184,28,.05), transparent); border-radius:8px; padding:20px;}
+  .ai-head{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .ai-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber); box-shadow:0 0 10px var(--amber);}
+  .ai-head span{font-family:'IBM Plex Mono'; font-size:12px; letter-spacing:.1em; color:var(--amber); text-transform:uppercase;}
+  .risk-meter{display:flex; align-items:center; gap:14px; margin:14px 0;}
+  .risk-track{flex:1; height:8px; background:var(--panel-2); border-radius:4px; overflow:hidden; border:1px solid var(--line);}
+  .risk-fill{height:100%; border-radius:4px;}
+  .risk-label{font-family:'IBM Plex Mono'; font-size:12px; font-weight:600; white-space:nowrap;}
+  .evidence-list{list-style:none; margin-top:10px;}
+  .evidence-list li{font-size:13px; color:var(--sub); padding:7px 0 7px 18px; position:relative; border-top:1px dashed var(--line);}
+  .evidence-list li:first-child{border-top:none;}
+  .evidence-list li::before{content:"→"; position:absolute; left:0; color:var(--amber);}
+  .rec-text{background:var(--panel-2); border-left:3px solid var(--amber); padding:12px 14px; margin-top:14px; font-size:13.5px; line-height:1.8; border-radius:0 6px 6px 0;}
+
+  .scale{display:flex; gap:8px; margin-top:8px;}
+  .scale button{flex:1; padding:12px 4px; background:var(--panel-2); border:1px solid var(--line); color:var(--sub); border-radius:6px; cursor:pointer; font-family:'IBM Plex Mono'; font-size:14px; transition:all .12s;}
+  .scale button.on{background:var(--amber); color:#1a1300; border-color:var(--amber); font-weight:700;}
+  .scale-labels{display:flex; justify-content:space-between; font-size:11px; color:var(--sub); margin-top:5px;}
+  .qblock{margin-bottom:24px;}
+  .qblock .q{font-size:14.5px; font-weight:500; margin-bottom:4px;}
+
+  .choice-row{display:flex; gap:12px; margin-top:8px;}
+  .choice-btn{flex:1; padding:16px; border-radius:8px; border:1px solid var(--line); background:var(--panel-2); cursor:pointer; text-align:center; transition:all .12s;}
+  .choice-btn b{display:block; font-size:15px; margin-bottom:3px;}
+  .choice-btn span{font-size:12px; color:var(--sub);}
+  .choice-btn.on{border-color:var(--amber); background:rgba(255,184,28,.1);}
+  .choice-btn.on.yes{border-color:var(--red); background:rgba(229,72,77,.1);}
+  .choice-btn.on.yes b{color:var(--red);}
+  .choice-btn.on.no{border-color:var(--green); background:rgba(48,169,110,.1);}
+  .choice-btn.on.no b{color:var(--green);}
+
+  .status{font-family:'IBM Plex Mono'; font-size:12px; color:var(--sub); margin-top:16px;}
+  .status.err{color:var(--red);}
+  .status.ok{color:var(--green);}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px;}
+  .stat{background:var(--panel-2); border:1px solid var(--line); border-radius:6px; padding:14px; text-align:center;}
+  .stat .n{font-family:'IBM Plex Mono'; font-size:24px; font-weight:600; color:var(--amber);}
+  .stat .l{font-size:11.5px; color:var(--sub); margin-top:4px;}
+
+  footer{text-align:center; color:var(--sub); font-size:11.5px; margin-top:40px; font-family:'IBM Plex Mono';}
+  .hidden{display:none !important;}
+  @media (max-width:600px){
+    .stat-grid{grid-template-columns:1fr 1fr;}
+    .choice-row{flex-direction:column;}
+    table.spec{font-size:12px;}
+  }
+</style>
+</head>
+<body>
+<div class="rail"></div>
+<div id="app">
+
+  <header class="top">
+    <div class="brand">
+      <span class="tag">VPO · RQ-05</span>
+      <h1>情境化AI決策支援實驗平台</h1>
+    </div>
+    <div class="clock mono" id="clock"></div>
+  </header>
+
+  <!-- SCREEN 0: INTRO -->
+  <section id="screen-intro" class="card">
+    <div class="eyebrow">受測說明</div>
+    <h2>封裝製程風險升級決策</h2>
+    <p class="lead">
+      這是一個約 3-5 分鐘的情境決策任務，用於「情境化AI決策支援對智慧製造管理者資訊理解、信任與決策採用意願之影響」研究。
+      系統會隨機給你兩種介面版本其中一種，記錄你的閱讀時間與最終決策，不會記錄你的身分資訊，可填代號方便你自己核對。
+    </p>
+    <label class="field">受測者代號（選填，例如姓名縮寫或工號末3碼）</label>
+    <input type="text" id="pid" placeholder="例如 P07" maxlength="20" style="margin-bottom:18px;">
+
+    <label class="field">您目前所屬產業</label>
+    <select id="industry" class="mono" style="width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:11px 12px; border-radius:6px; font-size:14px; margin-bottom:18px;">
+      <option value="">請選擇</option>
+      <option>半導體／電子製造</option>
+      <option>傳統製造／機械／化工</option>
+      <option>金融／保險</option>
+      <option>零售／消費／服務業</option>
+      <option>科技／軟體</option>
+      <option>其他</option>
+    </select>
+
+    <label class="field">您目前的職級</label>
+    <select id="rank" class="mono" style="width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:11px 12px; border-radius:6px; font-size:14px; margin-bottom:18px;">
+      <option value="">請選擇</option>
+      <option>協理／處長以上</option>
+      <option>經理／副理</option>
+      <option>其他（工程師／專員等）</option>
+    </select>
+
+    <div class="qblock">
+      <div class="q">您目前的工作是否涉及製造、品保或供應鏈相關決策？</div>
+      <div class="choice-row">
+        <div class="choice-btn" id="mfg-yes" onclick="setMfg(true)"><b>是</b><span>會用製造情境案例</span></div>
+        <div class="choice-btn" id="mfg-no" onclick="setMfg(false)"><b>否</b><span>會用跨產業通用案例</span></div>
+      </div>
+    </div>
+
+    <div class="qblock">
+      <div class="q">您平時使用 AI 工具（如ChatGPT、Copilot等）輔助工作決策的頻繁程度</div>
+      <div class="scale" id="scale-aiexp"></div>
+      <div class="scale-labels"><span>幾乎不用</span><span>非常頻繁</span></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="start-btn" onclick="startExperiment()" disabled>開始任務</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 1: SCENARIO -->
+  <section id="screen-scenario" class="card hidden">
+    <div class="badge" id="group-badge" style="margin-bottom:16px;"><span>組別</span> <b id="group-label">—</b></div>
+    <div class="eyebrow">情境敘述</div>
+
+    <!-- MANUFACTURING VERSION -->
+    <div id="scenario-mfg">
+      <h2>某高階封裝產品在可靠度測試中出現脫層（Delamination）異常</h2>
+      <p class="lead">
+        需判斷是否升級為公司重大風險處理，並決定後續驗證、改善方案、資源投入與責任單位。以下為系統彙整的案件資訊：
+      </p>
+      <table class="spec">
+        <tr><th>Failure</th><td>可靠度測試(TCT/HAST)後，封裝體邊緣出現分層現象，發生率約 3.2%（歷史基準線 &lt;0.5%）</td></tr>
+        <tr><th>Mechanism</th><td>研判與底部填充膠(Underfill)固化製程參數飄移有關，物理化學機制尚待完全確認</td></tr>
+        <tr><th>Influencing Factors</th><td>製程參數(烘烤溫度曲線)、材料批次(Underfill新供應商批號)、環境因素(產線濕度)</td></tr>
+        <tr><th>Verification</th><td>現有數據涵蓋近4週生產批次，尚未完成新批次材料的加嚴驗證</td></tr>
+        <tr><th>Solution（草案）</th><td>暫緩新批次材料放行，回溯篩選同批次已出貨品，啟動溫度曲線再驗證</td></tr>
+        <tr><th>Responsible & Due Date</th><td>品保處主責，暫訂7個工作天內完成初步根因報告</td></tr>
+      </table>
+      <div id="ai-panel-b-mfg" class="ai-panel hidden">
+        <div class="ai-head"><span class="dot"></span><span>情境化 AI 決策支援</span></div>
+        <div class="risk-meter">
+          <div class="risk-track"><div class="risk-fill" style="width:72%; background:var(--red);"></div></div>
+          <div class="risk-label" style="color:var(--red);">風險等級：高（72/100）</div>
+        </div>
+        <ul class="evidence-list">
+          <li>本批脫層率為歷史基準的 6.4 倍，且集中於同一材料批號（證據：批次追溯資料庫 #LOT-8834）</li>
+          <li>同類異常於同業公開失效模式資料庫中，多與Underfill新供應商切換初期相關</li>
+          <li>目前已出貨品中，同批次比例約占本月出貨量 11%，具客戶端曝險</li>
+        </ul>
+        <div class="rec-text">
+          <b style="color:var(--amber);">AI 建議：</b> 建議升級為公司重大風險處理。理由：異常率顯著偏離基準、根因假設具材料批次一致性、且已有客戶端曝險，延遲升級的邊際成本高於誤判成本。
+          <br><span style="color:var(--sub); font-size:12px;">建議信心水準：78% ・ 資料來源：批次追溯DB、SPC系統、同業FMEA資料庫 ・ 本建議需人工覆核後生效</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- GENERIC CROSS-INDUSTRY VERSION -->
+    <div id="scenario-generic" class="hidden">
+      <h2>主力客戶訂單出現重大交期延誤風險</h2>
+      <p class="lead">
+        需判斷是否升級為公司重大風險處理，並決定後續應對、資源投入與責任單位。以下為系統彙整的案件資訊：
+      </p>
+      <table class="spec">
+        <tr><th>Failure</th><td>主力客戶訂單本月交期延誤達12天，超出SLA約定的3天上限，發生頻率為近半年最高</td></tr>
+        <tr><th>Mechanism</th><td>研判與關鍵供應商產能吃緊、跨部門排程未同步有關，確切原因待查</td></tr>
+        <tr><th>Influencing Factors</th><td>供應商產能狀況、內部排程系統、跨部門溝通流程</td></tr>
+        <tr><th>Verification</th><td>現有數據涵蓋近3週訂單追蹤紀錄，尚未完成供應商產能實地查核</td></tr>
+        <tr><th>Solution（草案）</th><td>啟動備援供應商評估、調整內部排程優先序、加開跨部門協調會議</td></tr>
+        <tr><th>Responsible & Due Date</th><td>供應鏈管理處主責，暫訂5個工作天內完成初步影響評估</td></tr>
+      </table>
+      <div id="ai-panel-b-generic" class="ai-panel hidden">
+        <div class="ai-head"><span class="dot"></span><span>情境化 AI 決策支援</span></div>
+        <div class="risk-meter">
+          <div class="risk-track"><div class="risk-fill" style="width:68%; background:var(--red);"></div></div>
+          <div class="risk-label" style="color:var(--red);">風險等級：高（68/100）</div>
+        </div>
+        <ul class="evidence-list">
+          <li>本次延誤天數為近半年基準值的4倍以上（證據：訂單追蹤系統 #ORD-2291）</li>
+          <li>同一供應商過去3個月已有2次類似延誤紀錄，具重複發生跡象</li>
+          <li>該客戶佔本季營收比重約9%，具重大營收曝險</li>
+        </ul>
+        <div class="rec-text">
+          <b style="color:var(--amber);">AI 建議：</b> 建議升級為公司重大風險處理。理由：延誤幅度顯著偏離基準、供應商已有重複發生跡象、且客戶營收占比高，延遲升級的邊際成本高於誤判成本。
+          <br><span style="color:var(--sub); font-size:12px;">建議信心水準：74% ・ 資料來源：訂單追蹤系統、供應商績效紀錄 ・ 本建議需人工覆核後生效</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="goToDecision()">已閱讀，進入決策</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 2: DECISION -->
+  <section id="screen-decision" class="card hidden">
+    <div class="eyebrow">決策與量表</div>
+    <h2>你的判斷</h2>
+
+    <div class="qblock">
+      <div class="q">是否將此案升級為公司重大風險處理？</div>
+      <div class="choice-row">
+        <div class="choice-btn" id="choice-yes" onclick="setChoice('yes')"><b>升級</b><span>啟動重大風險流程</span></div>
+        <div class="choice-btn" id="choice-no" onclick="setChoice('no')"><b>不升級</b><span>維持現行處理層級</span></div>
+      </div>
+    </div>
+
+    <div class="qblock">
+      <div class="q">我對這個案件的問題與影響「理解」得很清楚</div>
+      <div class="scale" id="scale-understand"></div>
+      <div class="scale-labels"><span>非常不同意</span><span>非常同意</span></div>
+    </div>
+
+    <div class="qblock">
+      <div class="q">我對這個決策結果的「信心程度」</div>
+      <div class="scale" id="scale-confidence"></div>
+      <div class="scale-labels"><span>非常低</span><span>非常高</span></div>
+    </div>
+
+    <div class="qblock" id="trust-block">
+      <div class="q">我信任這份 AI 決策建議（能力／誠信／善意整體評估）</div>
+      <div class="scale" id="scale-trust"></div>
+      <div class="scale-labels"><span>非常不信任</span><span>非常信任</span></div>
+    </div>
+
+    <div class="qblock">
+      <div class="q">若未來遇到類似案件，我願意採用這種介面輔助決策</div>
+      <div class="scale" id="scale-adopt"></div>
+      <div class="scale-labels"><span>非常不願意</span><span>非常願意</span></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="submit-btn" onclick="submitSession()" disabled>提交本次記錄</button>
+    </div>
+    <div class="status" id="submit-status"></div>
+  </section>
+
+  <!-- SCREEN 3: DEBRIEF -->
+  <section id="screen-debrief" class="card hidden">
+    <div class="eyebrow">已完成</div>
+    <h2>感謝你的參與</h2>
+    <p class="lead">你的記錄已儲存。以下是本次任務的原始時間資料，供你檢查：</p>
+    <table class="spec" id="summary-table"></table>
+    <div class="btn-row">
+      <button class="btn ghost" onclick="downloadCSV()">下載本次記錄（CSV）</button>
+      <button class="btn ghost" onclick="location.reload()">重新開始新的一次測試</button>
+    </div>
+  </section>
+
+  <!-- RESEARCHER PANEL -->
+  <section class="card">
+    <div class="eyebrow">研究者面板</div>
+    <p class="lead" style="margin-bottom:12px;">此區彙整所有透過本頁面收集到的受測記錄（共用儲存，任何開啟此連結的人皆可看到彙整結果與下載完整資料，不含姓名等身分資訊）。</p>
+    <div class="btn-row" style="margin-top:0;">
+      <button class="btn ghost" onclick="loadAggregate()">重新整理彙整資料</button>
+      <button class="btn ghost" onclick="downloadAllCSV()">下載全部資料（CSV）</button>
+    </div>
+    <div class="stat-grid" id="agg-stats"></div>
+    <div class="status" id="agg-status"></div>
+  </section>
+
+  <footer>情境化AI決策支援研究原型 · 指導教師：徐立群 · 資料僅用於學術研究，不留存個資</footer>
+</div>
+
+<script>
+let session = {
+  id: 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+  pid: '',
+  industry: '',
+  rank: '',
+  mfgInvolved: null,
+  aiExperience: null,
+  scenarioType: '',
+  group: '',
+  t_start: null,
+  t_scenario_shown: null,
+  t_decision_shown: null,
+  t_submitted: null,
+  decision: null,
+  understand: null,
+  confidence: null,
+  trust: null,
+  adopt: null
+};
+
+function tick(){
+  document.getElementById('clock').textContent = new Date().toLocaleString('zh-TW', {hour12:false});
+}
+tick(); setInterval(tick, 1000);
+
+function buildScale(containerId, key, n=5){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  for(let i=1;i<=n;i++){
+    const b = document.createElement('button');
+    b.textContent = i;
+    b.onclick = () => {
+      session[key] = i;
+      [...el.children].forEach(c=>c.classList.remove('on'));
+      b.classList.add('on');
+      checkReady();
+    };
+    el.appendChild(b);
+  }
+}
+buildScale('scale-understand','understand');
+buildScale('scale-confidence','confidence');
+buildScale('scale-trust','trust');
+buildScale('scale-adopt','adopt');
+buildScale('scale-aiexp','aiExperience');
+
+function setMfg(v){
+  session.mfgInvolved = v;
+  document.getElementById('mfg-yes').classList.toggle('on', v===true);
+  document.getElementById('mfg-no').classList.toggle('on', v===false);
+  checkStartReady();
+}
+
+document.getElementById('industry').addEventListener('change', checkStartReady);
+document.getElementById('rank').addEventListener('change', checkStartReady);
+
+function checkStartReady(){
+  const industry = document.getElementById('industry').value;
+  const rank = document.getElementById('rank').value;
+  const ready = industry && rank && session.mfgInvolved !== null && session.aiExperience !== null;
+  document.getElementById('start-btn').disabled = !ready;
+}
+// aiExperience scale also needs to re-check start readiness on click
+document.getElementById('scale-aiexp').addEventListener('click', checkStartReady);
+
+function startExperiment(){
+  session.pid = document.getElementById('pid').value.trim();
+  session.industry = document.getElementById('industry').value;
+  session.rank = document.getElementById('rank').value;
+  session.scenarioType = session.mfgInvolved ? 'mfg' : 'generic';
+  session.t_start = Date.now();
+  // balance A/B roughly via random; researcher can rebalance manually by watching agg panel
+  session.group = Math.random() < 0.5 ? 'A' : 'B';
+  document.getElementById('group-label').textContent = session.group + '組 — ' + (session.group==='A' ? '一般資訊' : '情境化AI決策支援') + ' ／ ' + (session.scenarioType==='mfg' ? '製造情境' : '通用情境');
+
+  if(session.scenarioType === 'mfg'){
+    document.getElementById('scenario-mfg').classList.remove('hidden');
+    document.getElementById('scenario-generic').classList.add('hidden');
+  } else {
+    document.getElementById('scenario-mfg').classList.add('hidden');
+    document.getElementById('scenario-generic').classList.remove('hidden');
+  }
+
+  if(session.group === 'B'){
+    document.getElementById(session.scenarioType==='mfg' ? 'ai-panel-b-mfg' : 'ai-panel-b-generic').classList.remove('hidden');
+    document.getElementById('trust-block').classList.remove('hidden');
+  } else {
+    document.getElementById('trust-block').classList.add('hidden');
+  }
+  document.getElementById('screen-intro').classList.add('hidden');
+  document.getElementById('screen-scenario').classList.remove('hidden');
+  session.t_scenario_shown = Date.now();
+}
+
+function goToDecision(){
+  document.getElementById('screen-scenario').classList.add('hidden');
+  document.getElementById('screen-decision').classList.remove('hidden');
+  session.t_decision_shown = Date.now();
+}
+
+function setChoice(v){
+  session.decision = v;
+  document.getElementById('choice-yes').classList.remove('on','yes');
+  document.getElementById('choice-no').classList.remove('on','no');
+  document.getElementById('choice-'+v).classList.add('on', v);
+  checkReady();
+}
+
+function checkReady(){
+  const needTrust = session.group === 'B';
+  const ready = session.decision && session.understand && session.confidence && session.adopt && (!needTrust || session.trust);
+  document.getElementById('submit-btn').disabled = !ready;
+}
+
+async function submitSession(){
+  session.t_submitted = Date.now();
+  const statusEl = document.getElementById('submit-status');
+  statusEl.textContent = '儲存中…';
+  statusEl.className = 'status';
+  try{
+    await window.storage.set('session:' + session.id, JSON.stringify(session), true);
+    statusEl.textContent = '已儲存';
+    statusEl.className = 'status ok';
+  } catch(e){
+    statusEl.textContent = '共用儲存失敗，記錄僅保留在本頁面，請務必下載 CSV 備份：' + e;
+    statusEl.className = 'status err';
+  }
+  showDebrief();
+}
+
+function showDebrief(){
+  document.getElementById('screen-decision').classList.add('hidden');
+  document.getElementById('screen-debrief').classList.remove('hidden');
+  const rows = [
+    ['受測代號', session.pid || '（未填）'],
+    ['產業', session.industry],
+    ['職級', session.rank],
+    ['情境版本', session.scenarioType==='mfg' ? '製造情境' : '通用情境'],
+    ['AI使用經驗(1-5)', session.aiExperience],
+    ['組別', session.group],
+    ['決策', session.decision === 'yes' ? '升級' : '不升級'],
+    ['理解程度', session.understand],
+    ['信心程度', session.confidence],
+    ['AI信任程度', session.group==='B' ? session.trust : 'N/A（A組無AI建議）'],
+    ['採用意願', session.adopt],
+    ['閱讀情境耗時(秒)', ((session.t_decision_shown - session.t_scenario_shown)/1000).toFixed(1)],
+    ['決策耗時(秒)', ((session.t_submitted - session.t_decision_shown)/1000).toFixed(1)],
+    ['總耗時(秒)', ((session.t_submitted - session.t_start)/1000).toFixed(1)],
+  ];
+  document.getElementById('summary-table').innerHTML = rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('');
+}
+
+function toCSVRow(s){
+  return [s.id,s.pid,s.industry,s.rank,s.mfgInvolved,s.scenarioType,s.aiExperience,
+    s.group,s.decision,s.understand,s.confidence,s.trust??'',s.adopt,
+    ((s.t_decision_shown-s.t_scenario_shown)/1000).toFixed(1),
+    ((s.t_submitted-s.t_decision_shown)/1000).toFixed(1),
+    ((s.t_submitted-s.t_start)/1000).toFixed(1),
+    new Date(s.t_start).toISOString()
+  ].join(',');
+}
+const CSV_HEADER = 'session_id,pid,industry,rank,mfg_involved,scenario_type,ai_experience,group,decision,understand,confidence,trust,adopt,read_sec,decide_sec,total_sec,started_at';
+
+function downloadCSV(){
+  const csv = CSV_HEADER + '\n' + toCSVRow(session);
+  triggerDownload(csv, 'session_' + session.id + '.csv');
+}
+
+function triggerDownload(text, filename){
+  const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function loadAggregate(){
+  const statusEl = document.getElementById('agg-status');
+  statusEl.textContent = '讀取中…';
+  statusEl.className = 'status';
+  try{
+    const list = await window.storage.list('session:', true);
+    const keys = list ? list.keys : [];
+    const sessions = [];
+    for(const k of keys){
+      try{
+        const r = await window.storage.get(k, true);
+        if(r) sessions.push(JSON.parse(r.value));
+      } catch(e){ /* skip unreadable key */ }
+    }
+    window.__allSessions = sessions;
+    const nA = sessions.filter(s=>s.group==='A').length;
+    const nB = sessions.filter(s=>s.group==='B').length;
+    const nYes = sessions.filter(s=>s.decision==='yes').length;
+    const nMfg = sessions.filter(s=>s.scenarioType==='mfg').length;
+    const nGen = sessions.filter(s=>s.scenarioType==='generic').length;
+    document.getElementById('agg-stats').innerHTML = `
+      <div class="stat"><div class="n">${sessions.length}</div><div class="l">總樣本數</div></div>
+      <div class="stat"><div class="n">${nA} / ${nB}</div><div class="l">A組 / B組</div></div>
+      <div class="stat"><div class="n">${nYes}</div><div class="l">選擇「升級」人數</div></div>
+      <div class="stat"><div class="n">${nMfg} / ${nGen}</div><div class="l">製造情境 / 通用情境</div></div>
+    `;
+    statusEl.textContent = '已更新，共 ' + sessions.length + ' 筆';
+    statusEl.className = 'status ok';
+  } catch(e){
+    statusEl.textContent = '讀取失敗：' + e;
+    statusEl.className = 'status err';
+  }
+}
+
+function downloadAllCSV(){
+  const sessions = window.__allSessions || [];
+  if(!sessions.length){ alert('尚未載入彙整資料，請先按「重新整理彙整資料」'); return; }
+  const csv = CSV_HEADER + '\n' + sessions.map(toCSVRow).join('\n');
+  triggerDownload(csv, 'all_sessions.csv');
+}
+
+loadAggregate();
+</script>
+</body>
+</html>
