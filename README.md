@@ -35,18 +35,22 @@ AI決策資訊品質(情境化) → 資訊理解 → AI信任 → 決策採用�
 2 (組別：一般資訊 A／情境化AI決策支援 B) × 2 (情境：製造 mfg／通用 generic) 受測者間設計。
 受測者為EMBA高階主管，背景題含產業別、職級、AI使用經驗。
 
+- `analysis/analyze_experiment.py` — 描述性統計、信度、t-test、卡方、ANOVA、階層迴歸示意
+- `analysis/sem_model.py` — 正式SEM／CFA分析（需 `pip install semopy`），輸出CFI/TLI/RMSEA/SRMR適配度與H5間接效果bootstrap CI
+
 ## 使用方式
 
 1. 專家內容效度審查：先用 `docs/content_validity_review.md` 邀請3-5位專家評分，依意見修正題項
 2. 開啟 `web/vpo-ai-decision-experiment.html`（可直接部署到GitHub Pages或Vercel發連結給受測者）
 3. 受測完成後，用頁面下方「研究者面板」下載彙整CSV
-4. 將CSV放進 `analysis/`，執行 `python3 analysis/analyze_experiment.py` 進行統計分析（含Cronbach's α）
+4. 將CSV放進 `analysis/`，執行 `python3 analysis/analyze_experiment.py` 進行初步統計分析（含Cronbach's α）
+5. 資料量足夠後，執行 `python3 analysis/sem_model.py --csv all_sessions.csv --bootstrap 1000` 跑正式SEM驗證
 
 ## 待辦
 
 - [x] 16篇核心文獻逐筆查證真實性（DOI核對，見 `docs/reference_verification.md`）
+- [x] 正式SEM模型腳本備妥（`analysis/sem_model.py`，semopy，含CFA適配度與H5間接效果bootstrap）
 - [ ] 專家內容效度審查（3-5位）並依CVI結果修正題項
 - [ ] 10-15人小樣本前測，檢查填答時間與初步信度
-- [ ] 正式SEM模型驗證（建議用 lavaan 或 semopy）
 - [ ] 正式資料蒐集啟動（目標160-200份）
 - [ ] 文獻探討擴充至30-50篇規模，補充在地實證研究
