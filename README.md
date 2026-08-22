@@ -14,7 +14,8 @@ docs/       研究計畫PPT、文獻探討、操作型定義、專家內容效�
 ## docs/ 內容
 
 - `thesis_proposal_v1.pptx` — 完整提案簡報（22頁：背景、文獻、架構、方法、先導測試、時程）
-- `literature_review.md` — 文獻探討完整版（4理論脈絡＋16篇文獻，含研究定位）
+- `literature_review.md` — 文獻探討完整版（4理論脈絡＋16篇文獻，含研究定位，所有引用附DOI）
+- `reference_verification.md` — 16篇文獻逐筆真實性查證記錄（DOI、查證方式、開放取用標記）
 - `operational_definitions.md` — 研究架構、各構念操作型定義、題項、信效度標準
 - `content_validity_review.md` — 專家內容效度審查表（正式施測前使用，含CVI計算方式）
 
@@ -43,6 +44,7 @@ AI決策資訊品質(情境化) → 資訊理解 → AI信任 → 決策採用�
 
 ## 待辦
 
+- [x] 16篇核心文獻逐筆查證真實性（DOI核對，見 `docs/reference_verification.md`）
 - [ ] 專家內容效度審查（3-5位）並依CVI結果修正題項
 - [ ] 10-15人小樣本前測，檢查填答時間與初步信度
 - [ ] 正式SEM模型驗證（建議用 lavaan 或 semopy）
