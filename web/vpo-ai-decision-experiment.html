@@ -359,6 +359,7 @@ const SCALES = {
 };
 const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
 const allFilled = arr => arr.length>0 && arr.every(v=>v!==null);
+const hasCloudStorage = (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.set === 'function');
 
 function tick(){
   document.getElementById('clock').textContent = new Date().toLocaleString('zh-TW', {hour12:false});
@@ -492,15 +493,21 @@ async function submitSession(){
   session.adoptMean = mean(session.items.adopt);
   session.trustMean = session.group==='B' ? mean(session.items.trust) : null;
   const statusEl = document.getElementById('submit-status');
-  statusEl.textContent = '儲存中…';
-  statusEl.className = 'status';
-  try{
-    await window.storage.set('session:' + session.id, JSON.stringify(session), true);
-    statusEl.textContent = '已儲存';
+  if(hasCloudStorage){
+    statusEl.textContent = '儲存中…';
+    statusEl.className = 'status';
+    try{
+      await window.storage.set('session:' + session.id, JSON.stringify(session), true);
+      statusEl.textContent = '已儲存';
+      statusEl.className = 'status ok';
+    } catch(e){
+      statusEl.textContent = '共用儲存失敗，記錄僅保留在本頁面，請務必下載 CSV 備份：' + e;
+      statusEl.className = 'status err';
+    }
+  } else {
+    statusEl.textContent = '此連結無雲端彙整功能，已自動下載本次記錄CSV，請回傳給研究者（例如上傳共用資料夾或email）';
     statusEl.className = 'status ok';
-  } catch(e){
-    statusEl.textContent = '共用儲存失敗，記錄僅保留在本頁面，請務必下載 CSV 備份：' + e;
-    statusEl.className = 'status err';
+    downloadCSV();
   }
   showDebrief();
 }
@@ -565,6 +572,12 @@ function triggerDownload(text, filename){
 
 async function loadAggregate(){
   const statusEl = document.getElementById('agg-status');
+  if(!hasCloudStorage){
+    document.getElementById('agg-stats').innerHTML = '';
+    statusEl.textContent = '此為公開部署版本，無雲端彙整功能。每位受測者提交後會自動下載CSV，請請他們回傳給你（email或共用資料夾），再用「下載全部資料」按鈕合併，或直接手動合併多份CSV後放進 analysis/ 資料夾分析。';
+    statusEl.className = 'status';
+    return;
+  }
   statusEl.textContent = '讀取中…';
   statusEl.className = 'status';
   try{
